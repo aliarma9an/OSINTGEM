@@ -1,0 +1,30 @@
+# --- 1. Aşama: Build Aşaması ---
+# Go'nun yüklü olduğu bir imajı temel alarak başla
+FROM golang:1.22-alpine AS builder
+
+# Uygulama dosyalarının bulunacağı dizini oluştur
+WORKDIR /app
+
+# Go modüllerini kopyala ve bağımlılıkları indir. Bu adımı önce yaparak
+# kod değişmediği sürece bağımlılıkların tekrar indirilmesini önleriz (cache).
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Tüm kaynak kodunu kopyala
+COPY . .
+
+# Uygulamayı derle. CGO_ENABLED=0 statik bir binary oluşturur.
+RUN CGO_ENABLED=0 GOOS=linux go build -o /main .
+
+# --- 2. Aşama: Final Aşaması ---
+# Sadece Alpine'in temel alındığı çok küçük bir imaj ile başla
+FROM alpine:latest
+
+# Uygulama dosyalarının bulunacağı dizini oluştur
+WORKDIR /app
+
+# Sadece derlenmiş olan binary dosyasını bir önceki aşamadan kopyala
+COPY --from=builder /main .
+
+# Container çalıştığında hangi komutun çalışacağını belirt
+CMD ["./main"]

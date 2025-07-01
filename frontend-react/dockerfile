@@ -1,0 +1,26 @@
+# --- 1. Aşama: Build Aşaması ---
+# Node.js'in yüklü olduğu bir imajı temel alarak başla
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# package.json dosyasını kopyala ve bağımlılıkları yükle
+COPY package*.json ./
+RUN npm install
+
+# Tüm kaynak kodunu kopyala
+COPY . .
+
+# React uygulamasını build et
+RUN npm run build
+
+# --- 2. Aşama: Sunucu Aşaması ---
+# Hafif bir web sunucusu olan Nginx'i temel al
+FROM nginx:stable-alpine
+
+# Bir önceki aşamada oluşturulan build klasörünü Nginx'in sunum yapacağı dizine kopyala
+COPY --from=builder /app/build /usr/share/nginx/html
+
+# Nginx varsayılan olarak 80 portunu dinler.
+# Container çalıştığında Nginx'i başlat
+CMD ["nginx", "-g", "daemon off;"]

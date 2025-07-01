@@ -1,0 +1,18 @@
+# Python'un "slim" versiyonunu temel alarak başla. Bu, tam versiyondan daha küçüktür.
+FROM python:3.11-slim
+
+# Uygulama dosyalarının bulunacağı dizini oluştur
+WORKDIR /app
+
+# Bağımlılık listesini kopyala
+COPY requirements.txt .
+
+# Bağımlılıkları kur. --no-cache-dir imaj boyutunu küçük tutmaya yardımcı olur.
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Tüm kaynak kodunu kopyala
+COPY . .
+
+# Container çalıştığında hangi komutun çalışacağını belirt.
+# Örnek olarak FastAPI için Uvicorn kullanılmıştır. Kendi web sunucuna göre değiştirebilirsin.
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

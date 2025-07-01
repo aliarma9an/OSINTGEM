@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  # 1. GoLang API Servisi
+  go-api:
+    build: ./backend-go
+    ports:
+      - "8080:8080" # Bilgisayarının 8080 portunu container'ın 8080 portuna bağla
+    volumes:
+      - ./backend-go:/app # Kodda değişiklik yaptığında anında yansıması için
+    depends_on:
+      - neo4j
+      - elasticsearch
+    networks:
+      - osint-net
+
+  # 2. Python Veri İşleme Servisi
+  python-worker:
+    build: ./backend-python
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend-python:/app
+    depends_on:
+      - neo4j
+      - elasticsearch
+    networks:
+      - osint-net
+
+  # 3. Frontend Servisi
+  frontend:
+    build: ./frontend-react
+    ports:
+      - "3000:80" # Bilgisayarının 3000 portunu container'ın 80 portuna bağla
+    depends_on:
+      - go-api
+    networks:
+      - osint-net
+
+  # 4. Neo4j Graf Veri Tabanı
+  neo4j:
+    image: neo4j:5 # Hazır Neo4j imajını kullanıyoruz
+    ports:
+      - "7474:7474" # Neo4j Browser arayüzü
+      - "7687:7687" # Bolt driver bağlantısı
+    environment:
+      - NEO4J_AUTH=osintadmin/Wololo--13202923596 # Kullanıcı adı: neo4j, Şifre: Wololo--13202923596
+    depends_on:
+      - elasticsearch
+    volumes:
+      - neo4j_data:/data # Verilerin kalıcı olması için volume
+    networks:
+      - osint-net
+
+  # 5. Elasticsearch Arama Motoru
+  elasticsearch:
+    image: elasticsearch:8.14.0 # Hazır Elasticsearch imajı
+    ports:
+      - "9200:9200" # REST API portu
+      - "9300:9300"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false # Geliştirme ortamı için güvenliği kapatıyoruz
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - osint-net
+
+# Tüm container'ların birbiriyle konuşabilmesi için ortak bir ağ tanımlıyoruz
+networks:
+  osint-net:
+    driver: bridge
+
+# Verilerin kalıcı olmasını sağlayan volume'ları tanımlıyoruz
+volumes:
+  neo4j_data:
+  elasticsearch_data:
