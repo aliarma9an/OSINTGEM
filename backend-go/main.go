@@ -1,25 +1,23 @@
 package main
 
 import (
-	"database/sql",
-	"fmt",
-	"log",
-	"net/http",
-	"os",
-	"github.com/gocolly/colly/v2",
-	"github.comcom/jackc/pgx/v5/stdlib",
+	"database/sql"
+	"fmt"
+	"log"
+	"os"
+	"time"
+
+	"github.com/gocolly/colly/v2"
 )
 
 // Veritabanındaki 'sources' tablosunun yapısı
-type source struct [
-
-	ID int
-	Name string
-	URL string
-	Type string
+type Source struct {
+	ID      int
+	Name    string
+	URL     string
+	Type    string
 	RssFeed sql.NullString
-
-]
+}
 
 // Kazınan veriyi tutacak basit bir struct
 type ScrapedData struct {
@@ -79,13 +77,17 @@ func scrapeSourceURL(url string) (ScrapedData, error) {
 func getApprovedSources(db *sql.DB) ([]Source, error) {
 	query := `SELECT id, name, url, type, rss_feed FROM sources WHERE status = 'approved'`
 	rows, err := db.Query(query)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	defer rows.Close()
 
 	var sources []Source
 	for rows.Next() {
 		var s Source
-		if err := rows.Scan(&s.ID, &s.Name, &s.URL, &s.Type, &s.RssFeed); err != nil { continue }
+		if err := rows.Scan(&s.ID, &s.Name, &s.URL, &s.Type, &s.RssFeed); err != nil {
+			continue
+		}
 		sources = append(sources, s)
 	}
 	return sources, nil
@@ -96,9 +98,13 @@ func main() {
 	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_NAME"))
 	db, err := sql.Open("pgx", dsn)
-	if err != nil { log.Fatalf("Veritabanı sürücüsü başlatılamadı: %v", err) }
+	if err != nil {
+		log.Fatalf("Veritabanı sürücüsü başlatılamadı: %v", err)
+	}
 	defer db.Close()
-	if err = db.Ping(); err != nil { log.Fatalf("Veritabanına bağlanılamadı: %v", err) }
+	if err = db.Ping(); err != nil {
+		log.Fatalf("Veritabanına bağlanılamadı: %v", err)
+	}
 	log.Println("Veritabanına başarıyla bağlanıldı!")
 
 	for {
@@ -113,7 +119,7 @@ func main() {
 
 		for _, source := range approvedSources {
 			log.Printf("-> Görev Alındı: [%s] - %s", source.Type, source.Name)
-			
+
 			// YENİ EKLENEN KAZIMA ADIMI
 			scrapedData, err := scrapeSourceURL(source.URL)
 			if err != nil {
@@ -132,7 +138,7 @@ func main() {
 			// Python servisine bir mesaj kuyruğu (RabbitMQ, Kafka vb.) üzerinden göndereceğiz
 			// veya doğrudan Elasticsearch'e ham olarak kaydedeceğiz.
 		}
-		
+
 		log.Println("Tüm kaynaklar için görevler tamamlandı. 5 dakika sonra tekrar kontrol edilecek.")
 		time.Sleep(5 * time.Minute)
 	}
