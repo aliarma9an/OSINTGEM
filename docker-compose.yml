@@ -9,8 +9,15 @@ services:
     volumes:
       - ./backend-go:/app # Kodda değişiklik yaptığında anında yansıması için
     depends_on:
+      - postgres-db
       - neo4j
       - elasticsearch
+    environment:
+      - DB_HOST=postgres-db
+      - DB_PORT=5432
+      - DB_USER=osintuser
+      - DB_PASSWORD=osintpass
+      - DB_NAME=osint_sources
     networks:
       - osint-net
 
@@ -22,8 +29,15 @@ services:
     volumes:
       - ./backend-python:/app
     depends_on:
+      - postgres-db
       - neo4j
       - elasticsearch
+    environment:
+      - DB_HOST=postgres-db
+      - DB_PORT=5432
+      - DB_USER=osintuser
+      - DB_PASSWORD=osintpass
+      - DB_NAME=osint_sources
     networks:
       - osint-net
 
@@ -66,6 +80,20 @@ services:
     networks:
       - osint-net
 
+  # 6. PostgreSQL Veritabanı
+  postgres-db:
+    image: postgres:16-alpine # Hafif bir postgres imajı
+    ports:
+      - "5432:5432" # Standart PostgreSQL portu
+    environment:
+      - POSTGRES_USER=osintadmin
+      - POSTGRES_PASSWORD=Wololo--45976830800
+      - POSTGRES_DB=osint_sources
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Verilerin kalıcı olması için
+    networks:
+      - osint-net
+
 # Tüm container'ların birbiriyle konuşabilmesi için ortak bir ağ tanımlıyoruz
 networks:
   osint-net:
@@ -75,3 +103,4 @@ networks:
 volumes:
   neo4j_data:
   elasticsearch_data:
+  postgres_data:
